@@ -182,14 +182,34 @@
     padding: 20px;
     position: relative;
     overflow: hidden;
-    transition: transform 200ms ease, border-color 200ms ease;
+    transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+    opacity: 0;
+    animation: panel-enter 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(var(--panel-index, 0) * 45ms);
   }
-  .panel:hover { transform: translateY(-2px); }
+  @keyframes panel-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .panel:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.25);
+  }
+  html[data-theme="light"] .panel:hover {
+    border-color: rgba(0,0,0,0.15);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02), 0 8px 24px rgba(0,0,0,0.08);
+  }
   .panel.is-live::before {
     content: "";
     position: absolute; top: 0; left: 0; right: 0; height: 2px;
     background: linear-gradient(90deg, var(--status-live), transparent 70%);
     opacity: 0.7;
+  }
+  .panel.just-refreshed { animation: panel-flash 700ms ease; }
+  @keyframes panel-flash {
+    0% { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 0 0 1px rgba(255,255,255,0.25); }
+    100% { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 0 0 0 rgba(255,255,255,0); }
   }
   .panel-label {
     color: var(--text-muted);
@@ -214,6 +234,34 @@
   @keyframes pulse-dot {
     0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(22,163,74,0.4); }
     50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(22,163,74,0); }
+  }
+
+  /* Skeleton / loading shimmer */
+  .skeleton-line {
+    height: 12px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+    background: linear-gradient(90deg, var(--border-line) 25%, rgba(255,255,255,0.08) 50%, var(--border-line) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s ease-in-out infinite;
+  }
+  .skeleton-line.w-60 { width: 60%; }
+  .skeleton-line.w-40 { width: 40%; }
+  .skeleton-line.w-80 { width: 80%; }
+  .skeleton-line.big { height: 32px; margin-bottom: 10px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Retry status line */
+  .retry-note {
+    font-size: 9px;
+    opacity: 0.65;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+  .retry-note .retry-dot {
+    display: inline-block; width: 4px; height: 4px; border-radius: 50%;
+    background: var(--status-warn); margin-right: 5px;
+    animation: pulse-dot 1.2s ease-in-out infinite;
   }
 
   /* Weather */
@@ -268,6 +316,14 @@
 
   .config-note { font-size: 10px; color: var(--text-muted); line-height: 1.6; }
   .config-note code { color: var(--text-main); }
+
+  /* Insights */
+  .insight-item { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; font-size: 12.5px; line-height: 1.5; }
+  .insight-item .dot { flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; }
+  .insight-item .dot.urgent { background: #DC2626; }
+  .insight-item .dot.notice { background: #D97706; }
+  .insight-item .dot.info { background: var(--text-muted); }
+  .insight-item .dot.good { background: #16A34A; }
 
   .loading, .error-state { color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
   .error-state { color: #DC2626; }
@@ -348,85 +404,90 @@
 
   <div class="grid">
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="weatherPanel">
       <div class="panel-label"><span>WEATHER</span><span id="weatherStatus"><span class="status-dot"></span>LIVE</span></div>
       <div id="weatherBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="aqiPanel">
       <div class="panel-label"><span>AIR QUALITY</span><span id="aqiStatus"><span class="status-dot"></span>LIVE</span></div>
       <div id="aqiBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="sunPanel">
       <div class="panel-label"><span>SUN &amp; MOON</span><span id="sunStatus"><span class="status-dot"></span>LIVE</span></div>
       <div id="sunBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="quotePanel" onclick="loadQuote(); flashPanel('quotePanel');" style="cursor:pointer;" title="Click for a new quote">
       <div class="panel-label"><span>QUOTE OF THE DAY</span><span>001</span></div>
       <div id="quoteBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="fixturePanel" onclick="window.open('https://www.google.com/search?q=arsenal+next+match','_blank')" style="cursor:pointer;" title="Click for full fixture details">
       <div class="panel-label"><span>ARSENAL</span><span>AFC</span></div>
       <div id="fixtureBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
     </div>
 
     <div class="panel" id="newsPanel">
       <div class="panel-label"><span>HEADLINES</span><span id="newsStatus"><span class="status-dot off"></span>KEY REQUIRED</span></div>
-      <div id="newsBody"></div>
+      <div id="newsBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
-    <div class="panel" id="githubPanel">
+    <div class="panel" id="githubPanel" onclick="if(CONFIG.GITHUB_USERNAME) window.open('https://github.com/'+CONFIG.GITHUB_USERNAME,'_blank')" style="cursor:pointer;" title="Click to open GitHub profile">
       <div class="panel-label"><span>GITHUB</span><span id="githubStatus"><span class="status-dot off"></span>SET USERNAME</span></div>
-      <div id="githubBody"></div>
+      <div id="githubBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
     <div class="panel" id="locationPanel">
       <div class="panel-label"><span>CURRENT LOCATION</span><span id="locationStatus"><span class="status-dot off"></span>LOCATING</span></div>
-      <div id="locationBody"></div>
+      <div id="locationBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
     <div class="panel" id="calendarPanel">
       <div class="panel-label"><span>CALENDAR</span><span id="calendarStatus"><span class="status-dot off"></span>KEY REQUIRED</span></div>
-      <div id="calendarBody"></div>
+      <div id="calendarBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="tasksPanel">
       <div class="panel-label"><span>TASKS</span><span id="taskCount01">0/0</span></div>
       <ul class="task-list" id="taskList"></ul>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="focusPanel">
       <div class="panel-label"><span>FOCUS</span><span id="focusCount">0/0</span></div>
       <ul class="task-list" id="focusList"></ul>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="currencyPanel">
       <div class="panel-label"><span>CURRENCY</span><span><span class="status-dot"></span>LIVE</span></div>
       <div id="currencyBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="batteryPanel">
       <div class="panel-label"><span>BATTERY</span><span id="batteryStatus"><span class="status-dot"></span>LIVE</span></div>
-      <div id="batteryBody"></div>
+      <div id="batteryBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
-    <div class="panel is-live">
+    <div class="panel is-live" id="networkPanel">
       <div class="panel-label"><span>NETWORK</span><span id="networkStatus"><span class="status-dot"></span>LIVE</span></div>
-      <div id="networkBody"></div>
+      <div id="networkBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
     <div class="panel" id="codingPanel">
       <div class="panel-label"><span>DAILY CODING</span><span id="codingStatus"><span class="status-dot off"></span>KEY REQUIRED</span></div>
-      <div id="codingBody"></div>
+      <div id="codingBody"><div class="skeleton-line big w-60"></div><div class="skeleton-line w-40"></div></div>
     </div>
 
     <div class="panel is-live">
       <div class="panel-label"><span>NOTES</span><span>AUTOSAVE</span></div>
       <textarea class="notes-area" id="notesArea" placeholder="Jot something down…"></textarea>
       <div class="save-hint" id="notesSaved">SAVED LOCALLY</div>
+    </div>
+
+    <div class="panel is-live" id="insightsPanel" style="grid-column: 1 / -1;">
+      <div class="panel-label"><span>INSIGHTS</span><span><span class="status-dot"></span><span id="insightsCount">0</span> OBSERVATIONS</span></div>
+      <div id="insightsBody" class="loading">ANALYZING…</div>
     </div>
 
     <div class="panel is-live" style="grid-column: 1 / -1;">
@@ -446,7 +507,7 @@
 
 <div class="cmdk-overlay" id="cmdkOverlay" onclick="if(event.target===this) closePalette()">
   <div class="cmdk-box">
-    <input class="cmdk-input" id="cmdkInput" placeholder="Type a command… (Esc to close)" autocomplete="off">
+    <input class="cmdk-input" id="cmdkInput" placeholder="Type a command, or a sum like 12*4… (Esc to close)" autocomplete="off">
     <div class="cmdk-list" id="cmdkList"></div>
   </div>
 </div>
@@ -464,6 +525,82 @@
     GOOGLE_CALENDAR_API_KEY: 'AIzaSyBZwS5vi53oelMNgd-TiO9mAviYnUqb7zk', // https://console.cloud.google.com — API key with Calendar API enabled
     GOOGLE_CALENDAR_ID: 'ayodejare@gmail.com',     // the calendar's ID (must be public, or use OAuth for private ones)
   };
+
+  // =====================================================================
+  // PHASE 1 POLISH — utilities used across panels
+  // =====================================================================
+
+  // Stagger the entrance animation of each panel based on DOM order
+  document.querySelectorAll('.panel').forEach((p, i) => p.style.setProperty('--panel-index', i));
+
+  // Animate a number from its current displayed value up/down to a target.
+  // Usage: animateNumber(el, 22, '°C') — reads el's current number (or 0) and eases to 22.
+  function animateNumber(el, target, suffix = '', duration = 700, decimals = 0) {
+    if (!el) return;
+    const startText = (el.dataset.rawValue !== undefined) ? el.dataset.rawValue : '0';
+    const start = parseFloat(startText) || 0;
+    const startTime = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out-cubic
+      const value = start + (target - start) * eased;
+      el.textContent = value.toFixed(decimals) + suffix;
+      if (t < 1) requestAnimationFrame(tick);
+      else el.dataset.rawValue = target;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Briefly flash a panel's border to indicate fresh data landed
+  function flashPanel(panelId) {
+    const p = document.getElementById(panelId);
+    if (!p) return;
+    p.classList.remove('just-refreshed');
+    void p.offsetWidth; // restart animation
+    p.classList.add('just-refreshed');
+  }
+
+  // Wraps a fetch-and-render function with automatic retry + a visible
+  // "Last updated Xm ago • Retrying..." status instead of a dead error state.
+  // fn must return a Promise that resolves on success, rejects on failure.
+  function withRetry(fn, { bodyElId, maxRetries = 3, retryDelayMs = 15000 }) {
+    let attempt = 0;
+    let lastSuccess = null;
+
+    function timeAgo() {
+      if (!lastSuccess) return null;
+      const mins = Math.max(0, Math.round((Date.now() - lastSuccess) / 60000));
+      return mins < 1 ? 'just now' : `${mins}m ago`;
+    }
+
+    function showRetryNote(el) {
+      const existing = el.querySelector('.retry-note');
+      const note = document.createElement('div');
+      note.className = 'retry-note';
+      const ago = timeAgo();
+      note.innerHTML = `<span class="retry-dot"></span>${ago ? `LAST UPDATED ${ago.toUpperCase()} • ` : ''}RETRYING…`;
+      if (existing) existing.replaceWith(note); else el.appendChild(note);
+    }
+
+    async function run() {
+      try {
+        await fn();
+        lastSuccess = Date.now();
+        attempt = 0;
+      } catch (e) {
+        attempt++;
+        const el = document.getElementById(bodyElId);
+        if (el && attempt <= maxRetries) {
+          showRetryNote(el);
+          setTimeout(run, retryDelayMs);
+        } else if (el) {
+          const ago = timeAgo();
+          el.innerHTML = `<div class="error-state">UNAVAILABLE${ago ? `<br><span style="font-size:9px;opacity:0.7;">LAST UPDATED ${ago.toUpperCase()}</span>` : ''}</div>`;
+        }
+      }
+    }
+    run();
+  }
 
   // ---------- Theme ----------
   function applyTheme() {
@@ -572,7 +709,7 @@
       const c = data.current;
       const [label_, icon] = weatherCodeLabel(c.weather_code);
       document.getElementById('weatherBody').innerHTML = `
-        <div class="weather-temp"><span class="weather-icon">${icon}</span>${Math.round(c.temperature_2m)}°C</div>
+        <div class="weather-temp"><span class="weather-icon">${icon}</span><span id="weatherTempVal">0</span>°C</div>
         <div class="weather-cond">${label_}</div>
         <div class="weather-meta">
           <div>FEELS LIKE<b>${Math.round(c.apparent_temperature)}°C</b></div>
@@ -582,6 +719,7 @@
           <div>RAIN CHANCE<b>${data.daily.precipitation_probability_max[0]}%</b></div>
           <div>CONDITION<b style="font-size:11px;">${label_}</b></div>
         </div>`;
+      animateNumber(document.getElementById('weatherTempVal'), Math.round(c.temperature_2m));
       document.getElementById('locName').textContent = label;
 
       // Sun & Moon panel
@@ -614,9 +752,11 @@
       const aqi = data.current.us_aqi;
       const [label, color] = aqiLabel(aqi);
       document.getElementById('aqiBody').innerHTML = `
-        <div class="stat-big" style="color:${color}">${aqi}</div>
+        <div class="stat-big" style="color:${color}" id="aqiVal">0</div>
         <div class="stat-sub">${label}</div>`;
+      animateNumber(document.getElementById('aqiVal'), aqi);
       liveData.aqi = `${aqi} (${label})`;
+      liveData.aqiValue = aqi;
     } catch (e) {
       document.getElementById('aqiBody').innerHTML = '<div class="error-state">AIR QUALITY UNAVAILABLE</div>';
     }
@@ -663,6 +803,7 @@
           COUNTRY <b>${country || '—'}</b><br>
           COORDINATES <b>${lat.toFixed(4)}, ${lon.toFixed(4)}</b>
         </div>`;
+      flashPanel('locationPanel');
     } catch (e) {
       statusEl.innerHTML = '<span class="status-dot off"></span>ERROR';
       el.innerHTML = `<div class="error-state">LOCATION LOOKUP UNAVAILABLE</div>`;
@@ -746,6 +887,7 @@
             VENUE <b>${ev.strVenue || 'TBC'}</b>
           </div>`;
         liveData.arsenal = `${ev.strHomeTeam} vs ${ev.strAwayTeam} on ${dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`;
+        liveData.arsenalDate = dt;
       }
 
       let statsHTML = `<div class="config-note" style="margin-top:12px;">Add <code>API_FOOTBALL_KEY</code> as a Cloudflare Pages secret for league position, last result &amp; form.</div>`;
@@ -772,24 +914,20 @@
   loadFixture();
 
   // ---------- News (GNews — needs key) ----------
-  async function loadNews() {
+  function loadNews() {
     const el = document.getElementById('newsBody');
     if (!CONFIG.GNEWS_API_KEY) {
       el.innerHTML = `<div class="config-note">Add a free key from <code>gnews.io</code> to <code>CONFIG.GNEWS_API_KEY</code> to show live headlines here.</div>`;
       return;
     }
     document.getElementById('newsStatus').innerHTML = '<span class="status-dot"></span>LIVE';
-    try {
+    withRetry(async () => {
       const res = await fetch(`https://gnews.io/api/v4/top-headlines?lang=en&max=3&apikey=${CONFIG.GNEWS_API_KEY}`);
       const data = await res.json();
-      if (!res.ok) {
-        el.innerHTML = `<div class="error-state">NEWS FEED UNAVAILABLE<br><span style="font-size:9px;opacity:0.7;">HTTP ${res.status}: ${data.errors ? data.errors.join(', ') : (data.message || 'unknown error')}</span></div>`;
-        return;
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${data.errors ? data.errors.join(', ') : (data.message || 'unknown error')}`);
       el.innerHTML = (data.articles || []).map(a => `<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border-line);">${a.title}</div>`).join('') || '<div class="loading">NO HEADLINES</div>';
-    } catch (e) {
-      el.innerHTML = `<div class="error-state">NEWS FEED UNAVAILABLE<br><span style="font-size:9px;opacity:0.7;">${(e && e.message) ? e.message : e}</span></div>`;
-    }
+      flashPanel('newsPanel');
+    }, { bodyElId: 'newsBody' });
   }
   loadNews();
 
@@ -813,6 +951,8 @@
           <div class="fixture-teams">${push.repo.name.split('/')[1] || push.repo.name}</div>
           <div class="fixture-meta">${(commit?.message || 'Update').split('\\n')[0]}<br><b>${ago}</b></div>`;
         liveData.github = `latest push to ${push.repo.name}, ${ago.toLowerCase()}`;
+        liveData.githubMinsAgo = mins;
+        flashPanel('githubPanel');
       } else {
         document.getElementById('githubStatus').innerHTML = '<span class="status-dot warn"></span>NO RECENT PUSH';
         el.innerHTML = '<div class="loading">NO RECENT PUSH EVENTS</div>';
@@ -901,20 +1041,20 @@
   });
 
   // ---------- Currency (Frankfurter, no key) ----------
-  async function loadCurrency() {
-    try {
+  function loadCurrency() {
+    withRetry(async () => {
       const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=NGN,EUR,GBP');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const ngn = data.rates.NGN;
       document.getElementById('currencyBody').innerHTML = `
-        <div class="stat-big">₦${ngn.toFixed(0)}</div>
+        <div class="stat-big">₦<span id="ngnVal">0</span></div>
         <div class="stat-sub">1 USD · ${data.date}</div>
         <div class="stat-row"><span>EUR</span><b>${data.rates.EUR.toFixed(3)}</b></div>
         <div class="stat-row"><span>GBP</span><b>${data.rates.GBP.toFixed(3)}</b></div>`;
+      animateNumber(document.getElementById('ngnVal'), ngn, '', 700, 0);
       liveData.currency = `1 USD ≈ ₦${ngn.toFixed(0)}`;
-    } catch (e) {
-      document.getElementById('currencyBody').innerHTML = `<div class="error-state">RATES UNAVAILABLE<br><span style="font-size:9px;opacity:0.7;">${(e && e.message) ? e.message : e}</span></div>`;
-    }
+    }, { bodyElId: 'currencyBody' });
   }
   loadCurrency();
 
@@ -930,9 +1070,12 @@
     function draw() {
       const pct = Math.round(battery.level * 100);
       el.innerHTML = `
-        <div class="stat-big">${pct}%</div>
+        <div class="stat-big" id="batteryVal">0%</div>
         <div class="stat-sub">${battery.charging ? 'CHARGING' : 'ON BATTERY'}</div>`;
+      animateNumber(document.getElementById('batteryVal'), pct, '%');
       liveData.battery = `${pct}%${battery.charging ? ' (charging)' : ''}`;
+      liveData.batteryPct = pct;
+      liveData.batteryCharging = battery.charging;
     }
     draw();
     battery.addEventListener('levelchange', draw);
@@ -953,6 +1096,8 @@
         <div class="stat-row"><span>TYPE</span><b>${type}</b></div>
         <div class="stat-row"><span>SPEED (EST.)</span><b>${downlink}</b></div>`;
       document.getElementById('footNet').textContent = online ? 'ONLINE' : 'OFFLINE';
+      liveData.networkOnline = online;
+      liveData.networkType = type;
     }
     draw();
     window.addEventListener('online', draw);
@@ -982,8 +1127,65 @@
   }
   loadCoding();
 
-  // ---------- AI Brief (rule-based, generated locally from collected live data) ----------
+  // ---------- Insights engine (deterministic, rule-based, no API calls) ----------
+  function generateInsights() {
+    const insights = [];
+
+    if (liveData.batteryPct != null && !liveData.batteryCharging) {
+      if (liveData.batteryPct < 15) insights.push({ text: `Battery is at ${liveData.batteryPct}% and not charging — plug in soon.`, level: 'urgent' });
+      else if (liveData.batteryPct < 30) insights.push({ text: `Battery is below 30% (${liveData.batteryPct}%).`, level: 'notice' });
+    }
+    if (liveData.networkOnline === false) {
+      insights.push({ text: `You're currently offline — some panels may be showing stale data.`, level: 'urgent' });
+    }
+    if (liveData.aqiValue != null && liveData.aqiValue > 150) {
+      insights.push({ text: `Air quality is unhealthy (AQI ${liveData.aqiValue}) — worth limiting time outdoors.`, level: 'urgent' });
+    }
+    if (liveData.rainChance != null && liveData.rainChance >= 60) {
+      insights.push({ text: `High rain chance today (${liveData.rainChance}%) — worth carrying an umbrella.`, level: 'notice' });
+    }
+    if (liveData.githubMinsAgo != null && liveData.githubMinsAgo > 240) {
+      insights.push({ text: `No GitHub activity in the last ${Math.round(liveData.githubMinsAgo/60)} hours.`, level: 'notice' });
+    } else if (liveData.githubMinsAgo != null && liveData.githubMinsAgo < 30) {
+      insights.push({ text: `Recent GitHub push, ${liveData.githubMinsAgo} minute${liveData.githubMinsAgo===1?'':'s'} ago.`, level: 'good' });
+    }
+    if (tasksData.length) {
+      const doneTasks = tasksData.filter(t => t.done).length;
+      insights.push({ text: `You've completed ${doneTasks} of ${tasksData.length} tasks today.`, level: doneTasks === tasksData.length ? 'good' : 'info' });
+    }
+    if (focusData.length) {
+      const openFocus = focusData.filter(f => !f.done).length;
+      if (openFocus > 0) insights.push({ text: `${openFocus} focus item${openFocus>1?'s':''} still open.`, level: 'info' });
+    }
+    if (liveData.arsenalDate) {
+      const daysUntil = Math.round((liveData.arsenalDate - new Date()) / 86400000);
+      if (daysUntil >= 0 && daysUntil <= 2) {
+        insights.push({ text: `Arsenal play in ${daysUntil === 0 ? 'less than a day' : daysUntil + ' day' + (daysUntil>1?'s':'')} — ${liveData.arsenal}.`, level: 'info' });
+      }
+    }
+    if (liveData.nextEvent) {
+      insights.push({ text: `Next on your calendar: ${liveData.nextEvent}.`, level: 'info' });
+    }
+    if (!insights.length) insights.push({ text: 'No notable changes right now — everything looks steady.', level: 'good' });
+
+    const order = { urgent: 0, notice: 1, info: 2, good: 3 };
+    insights.sort((a, b) => order[a.level] - order[b.level]);
+    return insights.slice(0, 5);
+  }
+
+  function renderInsights() {
+    const list = generateInsights();
+    document.getElementById('insightsCount').textContent = list.length;
+    document.getElementById('insightsBody').innerHTML = list.map(i =>
+      `<div class="insight-item"><span class="dot ${i.level}"></span><span>${i.text}</span></div>`
+    ).join('');
+    flashPanel('insightsPanel');
+    return list;
+  }
+
+  // ---------- AI Brief (rule-based, generated locally from collected live data + insights) ----------
   function generateBrief() {
+    const insightsList = renderInsights();
     const lines = [];
     const hour = new Date().getHours();
     lines.push(`${greetingWord(hour).charAt(0) + greetingWord(hour).slice(1).toLowerCase()}.`);
@@ -995,13 +1197,19 @@
     if (liveData.github) lines.push(`GitHub: ${liveData.github}.`);
     if (liveData.currency) lines.push(`${liveData.currency}.`);
 
-    const openFocus = focusData.filter(f => !f.done).length;
-    const openTasks = tasksData.filter(t => !t.done).length;
-
-    let rec = "Take a moment to set today's focus.";
-    if (openFocus > 0) rec = `You have ${openFocus} focus item${openFocus>1?'s':''} left — tackle the top one first.`;
-    else if (openTasks > 0) rec = `Focus list is clear — ${openTasks} task${openTasks>1?'s remain':' remains'} on today's list.`;
-    else rec = "Everything on today's lists is done. Good work.";
+    // Lead the recommendation with the most pressing insight, so it reads as
+    // interpretation rather than a repeat of the data above.
+    const topPriority = insightsList.find(i => i.level === 'urgent' || i.level === 'notice');
+    let rec;
+    if (topPriority) {
+      rec = topPriority.text;
+    } else {
+      const openFocus = focusData.filter(f => !f.done).length;
+      const openTasks = tasksData.filter(t => !t.done).length;
+      if (openFocus > 0) rec = `You have ${openFocus} focus item${openFocus>1?'s':''} left — tackle the top one first.`;
+      else if (openTasks > 0) rec = `Focus list is clear — ${openTasks} task${openTasks>1?'s remain':' remains'} on today's list.`;
+      else rec = "Everything on today's lists is done. Good work.";
+    }
 
     document.getElementById('briefBody').innerHTML = `
       <div class="brief-line">${lines.join(' ')}</div>
@@ -1011,6 +1219,12 @@
   setTimeout(generateBrief, 2200);
 
   // ---------- Command palette ----------
+  function jumpTo(panelId) {
+    const p = document.getElementById(panelId);
+    if (!p) return;
+    p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flashPanel(panelId);
+  }
   const commands = [
     { label: 'Toggle theme', hint: 'T', action: toggleTheme },
     { label: 'Refresh weather', hint: 'R', action: initLocation },
@@ -1018,27 +1232,80 @@
     { label: 'Focus notes', hint: 'N', action: () => { closePalette(); notesArea.focus(); } },
     { label: 'Refresh GitHub', hint: 'G', action: loadGithub },
     { label: 'Regenerate AI brief', hint: 'B', action: generateBrief },
+    { label: 'Refresh insights', hint: 'I', action: renderInsights },
+    { label: 'Jump to insights', hint: '', action: () => jumpTo('insightsPanel') },
+    { label: 'Refresh currency', hint: '', action: loadCurrency },
+    { label: 'Refresh headlines', hint: '', action: loadNews },
+    { label: 'Open GitHub profile', hint: '', action: () => { if (CONFIG.GITHUB_USERNAME) window.open('https://github.com/'+CONFIG.GITHUB_USERNAME,'_blank'); } },
+    { label: 'Jump to weather', hint: 'W', action: () => jumpTo('weatherPanel') },
+    { label: 'Jump to air quality', hint: '', action: () => jumpTo('aqiPanel') },
+    { label: 'Jump to sun & moon', hint: '', action: () => jumpTo('sunPanel') },
+    { label: 'Jump to headlines', hint: '', action: () => jumpTo('newsPanel') },
+    { label: 'Jump to GitHub', hint: '', action: () => jumpTo('githubPanel') },
+    { label: 'Jump to location', hint: 'L', action: () => jumpTo('locationPanel') },
+    { label: 'Jump to calendar', hint: 'C', action: () => jumpTo('calendarPanel') },
+    { label: 'Jump to tasks', hint: '', action: () => jumpTo('tasksPanel') },
+    { label: 'Jump to focus', hint: '', action: () => jumpTo('focusPanel') },
+    { label: 'Jump to currency', hint: '', action: () => jumpTo('currencyPanel') },
+    { label: 'Jump to battery', hint: '', action: () => jumpTo('batteryPanel') },
+    { label: 'Jump to network', hint: '', action: () => jumpTo('networkPanel') },
+    { label: 'Jump to Arsenal fixture', hint: 'A', action: () => jumpTo('fixturePanel') },
+    { label: 'Jump to coding stats', hint: '', action: () => jumpTo('codingPanel') },
+    { label: 'Scroll to top', hint: '', action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
   ];
   const overlay = document.getElementById('cmdkOverlay');
   const cmdkInput = document.getElementById('cmdkInput');
   const cmdkList = document.getElementById('cmdkList');
+  let activeIdx = 0;
+  let currentMatches = [];
+
+  // Basic safe calculator: only digits, operators, parentheses, decimal points, spaces
+  function tryCalculate(input) {
+    const expr = input.trim().replace(/^=/, '').trim();
+    if (!expr || !/^[0-9+\-*/().\s]+$/.test(expr) || !/[0-9]/.test(expr)) return null;
+    try {
+      // eslint-disable-next-line no-new-func
+      const result = Function(`"use strict"; return (${expr})`)();
+      if (typeof result === 'number' && isFinite(result)) return result;
+    } catch (e) { /* not a valid expression */ }
+    return null;
+  }
+
   function renderPalette(filter = '') {
-    const matches = commands.filter(c => c.label.toLowerCase().includes(filter.toLowerCase()));
-    cmdkList.innerHTML = matches.map((c, i) => `<div class="cmdk-item ${i===0?'active':''}" data-idx="${commands.indexOf(c)}"><span>${c.label}</span><span>${c.hint}</span></div>`).join('') || '<div class="cmdk-item">No matches</div>';
+    const calc = tryCalculate(filter);
+    const labelMatches = commands.filter(c => c.label.toLowerCase().includes(filter.toLowerCase()));
+    currentMatches = calc !== null
+      ? [{ label: `= ${calc}`, hint: 'COPY', action: () => navigator.clipboard?.writeText(String(calc)) }, ...labelMatches]
+      : labelMatches;
+    activeIdx = 0;
+    cmdkList.innerHTML = currentMatches.map((c, i) => `<div class="cmdk-item ${i===0?'active':''}" data-idx="${i}"><span>${c.label}</span><span>${c.hint}</span></div>`).join('') || '<div class="cmdk-item">No matches</div>';
     cmdkList.querySelectorAll('.cmdk-item[data-idx]').forEach(item => {
-      item.addEventListener('click', () => { commands[+item.dataset.idx].action(); closePalette(); });
+      item.addEventListener('click', () => { currentMatches[+item.dataset.idx].action(); closePalette(); });
     });
+  }
+  function setActive(idx) {
+    const items = cmdkList.querySelectorAll('.cmdk-item[data-idx]');
+    if (!items.length) return;
+    activeIdx = ((idx % items.length) + items.length) % items.length;
+    items.forEach(it => it.classList.remove('active'));
+    items[activeIdx].classList.add('active');
+    items[activeIdx].scrollIntoView({ block: 'nearest' });
   }
   function openPalette() { overlay.classList.add('open'); cmdkInput.value=''; renderPalette(); cmdkInput.focus(); }
   function closePalette() { overlay.classList.remove('open'); }
   cmdkInput.addEventListener('input', () => renderPalette(cmdkInput.value));
+  cmdkInput.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(activeIdx + 1); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive(activeIdx - 1); }
+    if (e.key === 'Enter') { e.preventDefault(); if (currentMatches[activeIdx]) { currentMatches[activeIdx].action(); closePalette(); } }
+  });
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); overlay.classList.contains('open') ? closePalette() : openPalette(); }
     if (e.key === 'Escape') closePalette();
     if (!overlay.classList.contains('open') && document.activeElement !== notesArea) {
-      if (e.key.toLowerCase() === 't') toggleTheme();
-      if (e.key.toLowerCase() === 'r') initLocation();
-      if (e.key.toLowerCase() === '/') { e.preventDefault(); openPalette(); }
+      if (e.key === '/' || e.key === '?') { e.preventDefault(); openPalette(); return; }
+      const match = commands.find(c => c.hint && c.hint.length === 1 && c.hint.toLowerCase() === e.key.toLowerCase());
+      if (match) match.action();
     }
   });
 </script>
