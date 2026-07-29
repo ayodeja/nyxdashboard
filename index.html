@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYX // DAILY BRIEF</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root, html[data-theme="dark"] {
+    --bg-base: #0A0A0A;
+    --bg-panel: #141414;
+    --border-line: #222222;
+    --text-main: #F5F5F5;
+    --text-muted: #A1A1A1;
+    --accent-pure: #FFFFFF;
+    --status-live: #16A34A;
+    --status-warn: #D97706;
+    --status-off: #525252;
+  }
+  html[data-theme="light"] {
+    --bg-base: #FFFFFF;
+    --bg-panel: #F8F8F8;
+    --border-line: #E5E5E5;
+    --text-main: #171717;
+    --text-muted: #666666;
+    --accent-pure: #000000;
+    --status-live: #16A34A;
+    --status-warn: #B45309;
+    --status-off: #A3A3A3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: 'Space Mono', ui-monospace, monospace;
+    letter-spacing: -0.01em;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    transition: background-color 250ms ease, color 250ms ease;
+  }
+  body, .panel, .hero, .theme-toggle, .top-bar {
+    transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease;
+  }
+
+  /* ambient noise */
+  #noise {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    opacity: 0.02; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* mouse glow */
+  #glow {
+    position: fixed; width: 500px; height: 500px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.05), transparent 70%);
+    filter: blur(80px); pointer-events: none; z-index: 0;
+    transform: translate(-50%, -50%);
+    opacity: 0; transition: opacity 300ms ease;
+  }
+
+  header.top-bar {
+    height: 60px;
+    border-bottom: 1px solid var(--border-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: relative; z-index: 2;
+  }
+  .brand-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 14px;
+  }
+  .brand-sub {
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    margin-left: 10px;
+  }
+  .top-actions { display: flex; gap: 8px; align-items: center; }
+  .theme-toggle, .icon-btn {
+    background: none;
+    border: 1px solid var(--border-line);
+    color: var(--text-main);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .theme-toggle:hover, .icon-btn:hover { background: var(--bg-panel); }
+
+  main {
+    padding: 32px 24px 60px;
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+
+  .hero {
+    border: 1px solid var(--border-line);
+    background: var(--bg-panel);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 32px 32px 24px;
+    margin-bottom: 24px;
+  }
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .greeting {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .greeting b { color: var(--text-main); }
+  .clock-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(48px, 8vw, 88px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .date-value {
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
+  .location-tag {
+    text-align: right;
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .location-tag span { color: var(--text-main); display: block; font-size: 13px; margin-top: 4px; }
+  .status-line {
+    margin-top: 18px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* daily progress */
+  .progress-wrap { margin-top: 18px; }
+  .progress-meta {
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 6px;
+  }
+  .progress-track {
+    height: 4px; background: var(--border-line); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: var(--accent-pure); transition: width 600ms ease; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-line);
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 200ms ease, border-color 200ms ease;
+  }
+  .panel:hover { transform: translateY(-2px); }
+  .panel.is-live::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--status-live), transparent 70%);
+    opacity: 0.7;
+  }
+  .panel-label {
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-line);
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--status-live);
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse-dot 2.4s ease-in-out infinite;
+  }
+  .status-dot.warn { background: var(--status-warn); animation: none; }
+  .status-dot.off { background: var(--status-off); animation: none; }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(22,163,74,0.4); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(22,163,74,0); }
+  }
+
+  /* Weather */
+  .weather-temp { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 40px; display: flex; align-items: center; gap: 10px; }
+  .weather-icon { font-size: 28px; }
+  .weather-cond { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+  .weather-meta { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; font-size: 11px; color: var(--text-muted); }
+  .weather-meta b { color: var(--text-main); display: block; font-size: 14px; }
+
+  /* Quote */
+  .quote-text { font-size: 15px; line-height: 1.6; min-height: 48px; }
+  .quote-text .cursor { display: inline-block; width: 7px; background: var(--text-main); animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .quote-author { margin-top: 14px; color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .quote-author::before { content: "— "; }
+
+  /* Fixture */
+  .fixture-teams { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .fixture-meta { color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.8; }
+  .fixture-meta b { color: var(--text-main); }
+  .form-dots { display: flex; gap: 4px; margin-top: 8px; }
+  .form-dot {
+    width: 18px; height: 18px; border-radius: 4px; font-size: 9px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700;
+  }
+
+  /* Big stat panels (AQI, moon, currency, battery, network, coding) */
+  .stat-big { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 34px; }
+  .stat-sub { color: var(--text-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; font-size: 11px; color: var(--text-muted); }
+  .stat-row b { color: var(--text-main); }
+
+  /* Tasks / focus */
+  .task-list { list-style: none; font-size: 13px; }
+  .task-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer; }
+  .task-list li input { accent-color: var(--accent-pure); }
+  .task-list li.done { color: var(--text-muted); text-decoration: line-through; }
+  .task-count { font-size: 10px; letter-spacing: 0.1em; color: var(--text-muted); margin-top: 10px; text-transform: uppercase; }
+
+  /* Notes */
+  textarea.notes-area {
+    width: 100%; min-height: 100px; background: transparent; border: none;
+    color: var(--text-main); font-family: inherit; font-size: 12px; resize: vertical; outline: none;
+  }
+  .save-hint { font-size: 9px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 6px; }
+
+  /* AI brief */
+  .brief-line { font-size: 12.5px; line-height: 1.8; }
+  .brief-rec { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-line); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .brief-rec b { color: var(--text-main); display: block; margin-top: 4px; text-transform: none; letter-spacing: 0; font-size: 13px; }
+
+  .config-note { font-size: 10px; color: var(--text-muted); line-height: 1.6; }
+  .config-note code { color: var(--text-main); }
+
+  .loading, .error-state { color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .error-state { color: #DC2626; }
+  .bar-loading { display:flex; gap:3px; margin-top:8px; }
+  .bar-loading span { width: 5px; height: 10px; background: var(--border-line); animation: barpulse 1s ease-in-out infinite; }
+  .bar-loading span:nth-child(2){ animation-delay: 0.1s;} .bar-loading span:nth-child(3){ animation-delay: 0.2s;} .bar-loading span:nth-child(4){ animation-delay: 0.3s;}
+  @keyframes barpulse { 0%,100%{ background: var(--border-line);} 50%{ background: var(--text-main);} }
+
+  footer {
+    border-top: 1px solid var(--border-line);
+    margin-top: 24px;
+    padding-top: 16px;
+    display: flex; justify-content: center; gap: 28px; flex-wrap: wrap;
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    position: relative; z-index: 1;
+  }
+  footer b { color: var(--text-main); }
+
+  /* command palette */
+  .cmdk-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 50; align-items: flex-start; justify-content: center; padding-top: 12vh;
+  }
+  .cmdk-overlay.open { display: flex; }
+  .cmdk-box {
+    width: min(480px, 90vw); background: var(--bg-panel); border: 1px solid var(--border-line);
+    border-radius: 8px; overflow: hidden;
+  }
+  .cmdk-input {
+    width: 100%; padding: 16px; background: transparent; border: none; border-bottom: 1px solid var(--border-line);
+    color: var(--text-main); font-family: inherit; font-size: 13px; outline: none;
+  }
+  .cmdk-list { max-height: 300px; overflow-y: auto; }
+  .cmdk-item { padding: 12px 16px; font-size: 12px; cursor: pointer; display: flex; justify-content: space-between; color: var(--text-main); }
+  .cmdk-item:hover, .cmdk-item.active { background: var(--bg-base); }
+  .cmdk-item span { color: var(--text-muted); font-size: 10px; letter-spacing: 0.1em; }
+
+  @media (max-width: 560px) {
+    .hero-top { flex-direction: column; align-items: flex-start; }
+    .location-tag { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div id="noise"></div>
+<div id="glow"></div>
+
+<header class="top-bar">
+  <div>
+    <span class="brand-title">NYX</span><span class="brand-sub">DAILY BRIEF</span>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" onclick="openPalette()" title="Command palette (Ctrl+K)">⌘K</button>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">DARK</button>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <div class="greeting"><b id="greetName">GOOD MORNING</b></div>
+        <div class="clock-value" id="clock">--:--:--</div>
+        <div class="date-value" id="dateStr">LOADING DATE</div>
+      </div>
+      <div class="location-tag" id="locTag">LOCATION<span id="locName">DETECTING…</span></div>
+    </div>
+    <div class="status-line"><span class="status-dot" id="sysStatusDot"></span><span id="sysStatusText">INITIALIZING SYSTEMS…</span></div>
+    <div class="progress-wrap">
+      <div class="progress-meta"><span>DAY PROGRESS</span><span id="dayPct">0%</span></div>
+      <div class="progress-track"><div class="progress-fill" id="dayFill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>WEATHER</span><span id="weatherStatus"><span class="status-dot"></span>LIVE</span></div>
+      <div id="weatherBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>AIR QUALITY</span><span id="aqiStatus"><span class="status-dot"></span>LIVE</span></div>
+      <div id="aqiBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>SUN &amp; MOON</span><span id="sunStatus"><span class="status-dot"></span>LIVE</span></div>
+      <div id="sunBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label"><span>QUOTE OF THE DAY</span><span>001</span></div>
+      <div id="quoteBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>ARSENAL</span><span>AFC</span></div>
+      <div id="fixtureBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div class="panel" id="newsPanel">
+      <div class="panel-label"><span>HEADLINES</span><span id="newsStatus"><span class="status-dot off"></span>KEY REQUIRED</span></div>
+      <div id="newsBody"></div>
+    </div>
+
+    <div class="panel" id="githubPanel">
+      <div class="panel-label"><span>GITHUB</span><span id="githubStatus"><span class="status-dot off"></span>SET USERNAME</span></div>
+      <div id="githubBody"></div>
+    </div>
+
+    <div class="panel" id="locationPanel">
+      <div class="panel-label"><span>CURRENT LOCATION</span><span id="locationStatus"><span class="status-dot off"></span>LOCATING</span></div>
+      <div id="locationBody"></div>
+    </div>
+
+    <div class="panel" id="calendarPanel">
+      <div class="panel-label"><span>CALENDAR</span><span id="calendarStatus"><span class="status-dot off"></span>KEY REQUIRED</span></div>
+      <div id="calendarBody"></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>TASKS</span><span id="taskCount01">0/0</span></div>
+      <ul class="task-list" id="taskList"></ul>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>FOCUS</span><span id="focusCount">0/0</span></div>
+      <ul class="task-list" id="focusList"></ul>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>CURRENCY</span><span><span class="status-dot"></span>LIVE</span></div>
+      <div id="currencyBody"><div class="bar-loading"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>BATTERY</span><span id="batteryStatus"><span class="status-dot"></span>LIVE</span></div>
+      <div id="batteryBody"></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>NETWORK</span><span id="networkStatus"><span class="status-dot"></span>LIVE</span></div>
+      <div id="networkBody"></div>
+    </div>
+
+    <div class="panel" id="codingPanel">
+      <div class="panel-label"><span>DAILY CODING</span><span id="codingStatus"><span class="status-dot off"></span>KEY REQUIRED</span></div>
+      <div id="codingBody"></div>
+    </div>
+
+    <div class="panel is-live">
+      <div class="panel-label"><span>NOTES</span><span>AUTOSAVE</span></div>
+      <textarea class="notes-area" id="notesArea" placeholder="Jot something down…"></textarea>
+      <div class="save-hint" id="notesSaved">SAVED LOCALLY</div>
+    </div>
+
+    <div class="panel is-live" style="grid-column: 1 / -1;">
+      <div class="panel-label"><span>AI BRIEF</span><span><span class="status-dot"></span>GENERATED FROM LIVE DATA</span></div>
+      <div id="briefBody" class="loading">COMPILING…</div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>LOCAL <b id="footClock">--:--</b></span>
+    <span>NETWORK <b id="footNet">—</b></span>
+    <span>THEME <b id="footTheme">DARK</b></span>
+    <span>VERSION <b>2.0.0</b></span>
+  </footer>
+</main>
+
+<div class="cmdk-overlay" id="cmdkOverlay" onclick="if(event.target===this) closePalette()">
+  <div class="cmdk-box">
+    <input class="cmdk-input" id="cmdkInput" placeholder="Type a command… (Esc to close)" autocomplete="off">
+    <div class="cmdk-list" id="cmdkList"></div>
+  </div>
+</div>
+
+<script>
+  // =====================================================================
+  // CONFIG — client-visible values only. WAKATIME_API_KEY and
+  // API_FOOTBALL_KEY live as encrypted secrets on Cloudflare Pages now
+  // (Settings → Environment Variables) — they're read by the /api/*
+  // functions server-side and never appear in this file or page source.
+  // =====================================================================
+  const CONFIG = {
+    GITHUB_USERNAME: 'ayodeja', // public GitHub REST API, no key needed — confirm this is the exact handle
+    GNEWS_API_KEY: 'acb8df7cb2c9d1a6cb2834083675a865', // https://gnews.io (free tier) — verify this 32-char hex matches your gnews.io dashboard exactly
+    GOOGLE_CALENDAR_API_KEY: 'AIzaSyBZwS5vi53oelMNgd-TiO9mAviYnUqb7zk', // https://console.cloud.google.com — API key with Calendar API enabled
+    GOOGLE_CALENDAR_ID: 'ayodejare@gmail.com',     // the calendar's ID (must be public, or use OAuth for private ones)
+  };
+
+  // ---------- Theme ----------
+  function applyTheme() {
+    const saved = localStorage.getItem('NYX_THEME') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('themeBtn').textContent = saved.toUpperCase();
+    document.getElementById('footTheme').textContent = saved.toUpperCase();
+  }
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    document.getElementById('themeBtn').textContent = next.toUpperCase();
+    document.getElementById('footTheme').textContent = next.toUpperCase();
+    localStorage.setItem('NYX_THEME', next);
+  }
+  applyTheme();
+
+  // ---------- Mouse glow ----------
+  const glow = document.getElementById('glow');
+  document.addEventListener('mousemove', e => {
+    glow.style.opacity = '1';
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
+  });
+  document.addEventListener('mouseleave', () => glow.style.opacity = '0');
+
+  // ---------- Clock + greeting + day progress ----------
+  const liveData = {}; // collected live values for the AI brief
+
+  function greetingWord(h) {
+    if (h < 5) return 'GOOD NIGHT';
+    if (h < 12) return 'GOOD MORNING';
+    if (h < 17) return 'GOOD AFTERNOON';
+    if (h < 21) return 'GOOD EVENING';
+    return 'GOOD NIGHT';
+  }
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+    document.getElementById('footClock').textContent = now.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('dateStr').textContent = now.toLocaleDateString('en-GB', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    }).toUpperCase();
+    document.getElementById('greetName').textContent = greetingWord(now.getHours());
+
+    const secondsToday = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+    const pct = Math.round((secondsToday / 86400) * 100);
+    document.getElementById('dayPct').textContent = pct + '%';
+    document.getElementById('dayFill').style.width = pct + '%';
+    liveData.dayPct = pct;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  setTimeout(() => {
+    document.getElementById('sysStatusDot').className = 'status-dot';
+    document.getElementById('sysStatusText').textContent = 'ALL CORE SERVICES ONLINE';
+  }, 1200);
+
+  // ---------- Weather + AQI + Sun (Open-Meteo, no key) ----------
+  function weatherCodeLabel(code) {
+    const map = {
+      0: ['CLEAR SKY','☀'], 1: ['MOSTLY CLEAR','🌤'], 2: ['PARTLY CLOUDY','⛅'], 3: ['OVERCAST','☁'],
+      45: ['FOG','🌫'], 48: ['FOG','🌫'], 51: ['LIGHT DRIZZLE','🌦'], 53: ['DRIZZLE','🌦'], 55: ['DENSE DRIZZLE','🌦'],
+      61: ['LIGHT RAIN','🌧'], 63: ['RAIN','🌧'], 65: ['HEAVY RAIN','🌧'], 71: ['LIGHT SNOW','🌨'], 73: ['SNOW','🌨'],
+      75: ['HEAVY SNOW','❄'], 80: ['RAIN SHOWERS','🌦'], 81: ['RAIN SHOWERS','🌦'], 82: ['VIOLENT SHOWERS','⛈'],
+      95: ['THUNDERSTORM','⛈'], 96: ['THUNDERSTORM','⛈'], 99: ['THUNDERSTORM','⛈']
+    };
+    return map[code] || ['UNKNOWN','—'];
+  }
+
+  function aqiLabel(v) {
+    if (v == null) return ['—','—'];
+    if (v <= 50) return ['GOOD', '#16A34A'];
+    if (v <= 100) return ['MODERATE', '#D97706'];
+    if (v <= 150) return ['UNHEALTHY (SENSITIVE)', '#EA580C'];
+    if (v <= 200) return ['UNHEALTHY', '#DC2626'];
+    return ['VERY UNHEALTHY', '#991B1B'];
+  }
+
+  // simple moon phase algorithm (no API needed)
+  function moonPhase(date) {
+    const synodic = 29.53058867;
+    const known = new Date(Date.UTC(2000, 0, 6, 18, 14)); // known new moon
+    const days = (date - known) / 86400000;
+    let phase = (days % synodic + synodic) % synodic;
+    const pct = Math.round((phase < synodic/2 ? phase / (synodic/2) : (synodic - phase) / (synodic/2)) * 100);
+    let name;
+    if (phase < 1.84) name = 'NEW MOON';
+    else if (phase < 5.53) name = 'WAXING CRESCENT';
+    else if (phase < 9.22) name = 'FIRST QUARTER';
+    else if (phase < 12.91) name = 'WAXING GIBBOUS';
+    else if (phase < 16.61) name = 'FULL MOON';
+    else if (phase < 20.30) name = 'WANING GIBBOUS';
+    else if (phase < 23.99) name = 'LAST QUARTER';
+    else if (phase < 27.68) name = 'WANING CRESCENT';
+    else name = 'NEW MOON';
+    return { name, pct: Math.max(pct, 2) };
+  }
+
+  async function loadWeather(lat, lon, label) {
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,uv_index,precipitation_probability&daily=sunrise,sunset,uv_index_max,precipitation_probability_max&timezone=auto`);
+      const data = await res.json();
+      const c = data.current;
+      const [label_, icon] = weatherCodeLabel(c.weather_code);
+      document.getElementById('weatherBody').innerHTML = `
+        <div class="weather-temp"><span class="weather-icon">${icon}</span>${Math.round(c.temperature_2m)}°C</div>
+        <div class="weather-cond">${label_}</div>
+        <div class="weather-meta">
+          <div>FEELS LIKE<b>${Math.round(c.apparent_temperature)}°C</b></div>
+          <div>HUMIDITY<b>${c.relative_humidity_2m}%</b></div>
+          <div>WIND<b>${Math.round(c.wind_speed_10m)} KM/H</b></div>
+          <div>UV INDEX<b>${Math.round(c.uv_index ?? data.daily.uv_index_max[0])}</b></div>
+          <div>RAIN CHANCE<b>${data.daily.precipitation_probability_max[0]}%</b></div>
+          <div>CONDITION<b style="font-size:11px;">${label_}</b></div>
+        </div>`;
+      document.getElementById('locName').textContent = label;
+
+      // Sun & Moon panel
+      const sunrise = new Date(data.daily.sunrise[0]);
+      const sunset = new Date(data.daily.sunset[0]);
+      const moon = moonPhase(new Date());
+      document.getElementById('sunBody').innerHTML = `
+        <div class="weather-meta" style="grid-template-columns:1fr 1fr;">
+          <div>SUNRISE<b>${sunrise.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</b></div>
+          <div>SUNSET<b>${sunset.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</b></div>
+          <div>MOON PHASE<b style="font-size:12px;">${moon.name}</b></div>
+          <div>ILLUMINATION<b>${moon.pct}%</b></div>
+        </div>`;
+
+      liveData.weather = `${Math.round(c.temperature_2m)}°C, ${label_.toLowerCase()}`;
+      liveData.rainChance = data.daily.precipitation_probability_max[0];
+      liveData.sunset = sunset.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+      loadAQI(lat, lon);
+    } catch (e) {
+      document.getElementById('weatherBody').innerHTML = '<div class="error-state">WEATHER UNAVAILABLE</div>';
+      document.getElementById('sunBody').innerHTML = '<div class="error-state">SUN DATA UNAVAILABLE</div>';
+    }
+  }
+
+  async function loadAQI(lat, lon) {
+    try {
+      const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`);
+      const data = await res.json();
+      const aqi = data.current.us_aqi;
+      const [label, color] = aqiLabel(aqi);
+      document.getElementById('aqiBody').innerHTML = `
+        <div class="stat-big" style="color:${color}">${aqi}</div>
+        <div class="stat-sub">${label}</div>`;
+      liveData.aqi = `${aqi} (${label})`;
+    } catch (e) {
+      document.getElementById('aqiBody').innerHTML = '<div class="error-state">AIR QUALITY UNAVAILABLE</div>';
+    }
+  }
+
+  async function reverseGeocode(lat, lon) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+        headers: { 'Accept-Language': 'en' }
+      });
+      const data = await res.json();
+      const a = data.address || {};
+      const city = a.city || a.town || a.village || a.county || 'UNKNOWN';
+      const country = a.country || '';
+      return `${city.toUpperCase()}, ${country.toUpperCase()}`;
+    } catch (e) {
+      return 'LOCATION UNAVAILABLE';
+    }
+  }
+
+  async function loadLocationPanel(lat, lon, fallback) {
+    const el = document.getElementById('locationBody');
+    const statusEl = document.getElementById('locationStatus');
+    if (fallback) {
+      statusEl.innerHTML = '<span class="status-dot warn"></span>FALLBACK';
+      el.innerHTML = `<div class="error-state">LOCATION PERMISSION DENIED — SHOWING FALLBACK</div>`;
+      return;
+    }
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=14`, {
+        headers: { 'Accept-Language': 'en' }
+      });
+      const data = await res.json();
+      const a = data.address || {};
+      const city = a.city || a.town || a.village || a.county || 'UNKNOWN';
+      const suburb = a.suburb || a.neighbourhood || a.quarter || '';
+      const state = a.state || '';
+      const country = a.country || '';
+      statusEl.innerHTML = '<span class="status-dot"></span>LIVE';
+      el.innerHTML = `
+        <div class="fixture-teams">${city.toUpperCase()}${suburb ? ', ' + suburb.toUpperCase() : ''}</div>
+        <div class="fixture-meta">
+          STATE / REGION <b>${state || '—'}</b><br>
+          COUNTRY <b>${country || '—'}</b><br>
+          COORDINATES <b>${lat.toFixed(4)}, ${lon.toFixed(4)}</b>
+        </div>`;
+    } catch (e) {
+      statusEl.innerHTML = '<span class="status-dot off"></span>ERROR';
+      el.innerHTML = `<div class="error-state">LOCATION LOOKUP UNAVAILABLE</div>`;
+    }
+  }
+
+  function initLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const label = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          loadWeather(pos.coords.latitude, pos.coords.longitude, label);
+          loadLocationPanel(pos.coords.latitude, pos.coords.longitude);
+        },
+        () => {
+          loadWeather(51.5072, -0.1276, 'LONDON, UK (FALLBACK)');
+          loadLocationPanel(null, null, true);
+        }
+      );
+    } else {
+      loadWeather(51.5072, -0.1276, 'LONDON, UK (FALLBACK)');
+      loadLocationPanel(null, null, true);
+    }
+  }
+  initLocation();
+
+  // ---------- Quote (ZenQuotes with curated fallback + typewriter) ----------
+  const CURATED_QUOTES = [
+    { q: "The way to get started is to quit talking and begin doing.", a: "Walt Disney" },
+    { q: "Simplicity is the ultimate sophistication.", a: "Leonardo da Vinci" },
+    { q: "Discipline equals freedom.", a: "Jocko Willink" },
+    { q: "Small steps every day.", a: "Unknown" },
+    { q: "Done is better than perfect.", a: "Sheryl Sandberg" }
+  ];
+  function typewrite(el, text) {
+    el.innerHTML = '';
+    let i = 0;
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    cursor.textContent = ' ';
+    const speed = 18;
+    function step() {
+      if (i <= text.length) {
+        el.textContent = text.slice(0, i);
+        el.appendChild(cursor);
+        i++;
+        setTimeout(step, speed);
+      }
+    }
+    step();
+  }
+  async function loadQuote() {
+    let q, a;
+    try {
+      const res = await fetch('https://zenquotes.io/api/random');
+      const data = await res.json();
+      q = data[0].q; a = data[0].a;
+    } catch (e) {
+      const pick = CURATED_QUOTES[Math.floor(Math.random() * CURATED_QUOTES.length)];
+      q = pick.q; a = pick.a;
+    }
+    document.getElementById('quoteBody').innerHTML = `<div class="quote-text" id="quoteTextEl"></div><div class="quote-author">${a}</div>`;
+    typewrite(document.getElementById('quoteTextEl'), q);
+  }
+  loadQuote();
+
+  // ---------- Arsenal fixture (TheSportsDB, no key) + optional API-Football stats ----------
+  async function loadFixture() {
+    try {
+      const res = await fetch('https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=133604');
+      const data = await res.json();
+      let fixtureHTML = '<div class="loading">NO FIXTURE SCHEDULED</div>';
+      if (data.events && data.events.length) {
+        const ev = data.events[0];
+        const dt = new Date(`${ev.dateEvent}T${ev.strTime || '00:00:00'}Z`);
+        fixtureHTML = `
+          <div class="fixture-teams">${ev.strHomeTeam} v ${ev.strAwayTeam}</div>
+          <div class="fixture-meta">
+            COMPETITION <b>${ev.strLeague}</b><br>
+            KICK-OFF <b>${dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}, ${dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</b><br>
+            VENUE <b>${ev.strVenue || 'TBC'}</b>
+          </div>`;
+        liveData.arsenal = `${ev.strHomeTeam} vs ${ev.strAwayTeam} on ${dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`;
+      }
+
+      let statsHTML = `<div class="config-note" style="margin-top:12px;">Add <code>API_FOOTBALL_KEY</code> as a Cloudflare Pages secret for league position, last result &amp; form.</div>`;
+      try {
+        const statsRes = await fetch(`/api/football?season=${new Date().getFullYear()}`);
+        const statsData = await statsRes.json();
+        if (statsRes.ok && !statsData.error) {
+          const row = statsData.response?.[0]?.league?.standings?.[0]?.find(r => r.team.id === 42);
+          if (row) {
+            const form = (row.form || '').split('').slice(-5);
+            statsHTML = `
+              <div class="stat-row"><span>LEAGUE POSITION</span><b>${row.rank}${['ST','ND','RD'][((row.rank+90)%100-10)%10-1]||'TH'}</b></div>
+              <div class="stat-row"><span>LAST RESULT</span><b>${row.all.win}W-${row.all.draw}D-${row.all.lose}L (SEASON)</b></div>
+              <div class="form-dots">${form.map(f => `<div class="form-dot" style="background:${f==='W'?'#16A34A':f==='D'?'#D97706':'#DC2626'}">${f}</div>`).join('')}</div>`;
+          }
+        }
+      } catch (e) { /* leave config note */ }
+
+      document.getElementById('fixtureBody').innerHTML = fixtureHTML + statsHTML;
+    } catch (e) {
+      document.getElementById('fixtureBody').innerHTML = '<div class="error-state">FIXTURE FEED UNAVAILABLE</div>';
+    }
+  }
+  loadFixture();
+
+  // ---------- News (GNews — needs key) ----------
+  async function loadNews() {
+    const el = document.getElementById('newsBody');
+    if (!CONFIG.GNEWS_API_KEY) {
+      el.innerHTML = `<div class="config-note">Add a free key from <code>gnews.io</code> to <code>CONFIG.GNEWS_API_KEY</code> to show live headlines here.</div>`;
+      return;
+    }
+    document.getElementById('newsStatus').innerHTML = '<span class="status-dot"></span>LIVE';
+    try {
+      const res = await fetch(`https://gnews.io/api/v4/top-headlines?lang=en&max=3&apikey=${CONFIG.GNEWS_API_KEY}`);
+      const data = await res.json();
+      if (!res.ok) {
+        el.innerHTML = `<div class="error-state">NEWS FEED UNAVAILABLE<br><span style="font-size:9px;opacity:0.7;">HTTP ${res.status}: ${data.errors ? data.errors.join(', ') : (data.message || 'unknown error')}</span></div>`;
+        return;
+      }
+      el.innerHTML = (data.articles || []).map(a => `<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border-line);">${a.title}</div>`).join('') || '<div class="loading">NO HEADLINES</div>';
+    } catch (e) {
+      el.innerHTML = `<div class="error-state">NEWS FEED UNAVAILABLE<br><span style="font-size:9px;opacity:0.7;">${(e && e.message) ? e.message : e}</span></div>`;
+    }
+  }
+  loadNews();
+
+  // ---------- GitHub (public REST API, no key needed) ----------
+  async function loadGithub() {
+    const el = document.getElementById('githubBody');
+    if (!CONFIG.GITHUB_USERNAME) {
+      el.innerHTML = `<div class="config-note">Set <code>CONFIG.GITHUB_USERNAME</code> to show your latest public commit — no API key required.</div>`;
+      return;
+    }
+    try {
+      const res = await fetch(`https://api.github.com/users/${CONFIG.GITHUB_USERNAME}/events/public`);
+      const events = await res.json();
+      const push = Array.isArray(events) ? events.find(e => e.type === 'PushEvent') : null;
+      if (push) {
+        document.getElementById('githubStatus').innerHTML = '<span class="status-dot"></span>LIVE';
+        const commit = push.payload.commits?.[push.payload.commits.length - 1];
+        const mins = Math.round((Date.now() - new Date(push.created_at)) / 60000);
+        const ago = mins < 60 ? `${mins} MIN AGO` : `${Math.round(mins/60)} HR AGO`;
+        el.innerHTML = `
+          <div class="fixture-teams">${push.repo.name.split('/')[1] || push.repo.name}</div>
+          <div class="fixture-meta">${(commit?.message || 'Update').split('\\n')[0]}<br><b>${ago}</b></div>`;
+        liveData.github = `latest push to ${push.repo.name}, ${ago.toLowerCase()}`;
+      } else {
+        document.getElementById('githubStatus').innerHTML = '<span class="status-dot warn"></span>NO RECENT PUSH';
+        el.innerHTML = '<div class="loading">NO RECENT PUSH EVENTS</div>';
+      }
+    } catch (e) {
+      el.innerHTML = '<div class="error-state">GITHUB FEED UNAVAILABLE</div>';
+    }
+  }
+  loadGithub();
+
+  // ---------- Location panel is populated via loadLocationPanel() inside initLocation() ----------
+
+  // ---------- Google Calendar (needs API key + public calendar id) ----------
+  async function loadCalendar() {
+    const el = document.getElementById('calendarBody');
+    if (!CONFIG.GOOGLE_CALENDAR_API_KEY || !CONFIG.GOOGLE_CALENDAR_ID) {
+      el.innerHTML = `<div class="config-note">Add <code>CONFIG.GOOGLE_CALENDAR_API_KEY</code> and a public <code>CONFIG.GOOGLE_CALENDAR_ID</code> to show today's events. Private calendars need an OAuth flow instead of a plain API key.</div>`;
+      return;
+    }
+    try {
+      const now = new Date();
+      const end = new Date(now); end.setHours(23,59,59);
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CONFIG.GOOGLE_CALENDAR_ID)}/events?key=${CONFIG.GOOGLE_CALENDAR_API_KEY}&timeMin=${now.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime`;
+      const res = await fetch(url);
+      const data = await res.json();
+      document.getElementById('calendarStatus').innerHTML = '<span class="status-dot"></span>LIVE';
+      const items = (data.items || []).slice(0, 4);
+      el.innerHTML = items.length ? items.map(ev => {
+        const start = ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'ALL DAY';
+        return `<div class="stat-row"><span>${start}</span><b>${ev.summary}</b></div>`;
+      }).join('') : '<div class="loading">NOTHING SCHEDULED TODAY</div>';
+      if (items[0]) liveData.nextEvent = `${items[0].summary} at ${items[0].start.dateTime ? new Date(items[0].start.dateTime).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'all day'}`;
+    } catch (e) {
+      el.innerHTML = '<div class="error-state">CALENDAR UNAVAILABLE</div>';
+    }
+  }
+  loadCalendar();
+
+  // ---------- Tasks & Focus (localStorage — genuinely persistent) ----------
+  function renderChecklist(storageKey, listElId, countElId, defaultItems) {
+    let items = JSON.parse(localStorage.getItem(storageKey) || 'null') || defaultItems;
+    const listEl = document.getElementById(listElId);
+    function draw() {
+      listEl.innerHTML = items.map((it, idx) => `
+        <li class="${it.done ? 'done' : ''}" data-idx="${idx}">
+          <input type="checkbox" ${it.done ? 'checked' : ''}>
+          <span>${it.text}</span>
+        </li>`).join('');
+      const doneCount = items.filter(i => i.done).length;
+      document.getElementById(countElId).textContent = `${doneCount}/${items.length}`;
+      listEl.querySelectorAll('li').forEach(li => {
+        li.addEventListener('click', () => {
+          const idx = +li.dataset.idx;
+          items[idx].done = !items[idx].done;
+          localStorage.setItem(storageKey, JSON.stringify(items));
+          draw();
+        });
+      });
+    }
+    draw();
+    return items;
+  }
+  const tasksData = renderChecklist('NYX_TASKS', 'taskList', 'taskCount01', [
+    { text: 'Push repo', done: true },
+    { text: 'Meeting', done: true },
+    { text: 'Deploy', done: false }
+  ]);
+  const focusData = renderChecklist('NYX_FOCUS', 'focusList', 'focusCount', [
+    { text: 'Finish dashboard', done: false },
+    { text: 'Push GitHub', done: false },
+    { text: 'Gym', done: false },
+    { text: 'Read 20 mins', done: false }
+  ]);
+
+  // ---------- Notes (localStorage) ----------
+  const notesArea = document.getElementById('notesArea');
+  notesArea.value = localStorage.getItem('NYX_NOTES') || '';
+  let notesTimer;
+  notesArea.addEventListener('input', () => {
+    document.getElementById('notesSaved').textContent = 'SAVING…';
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => {
+      localStorage.setItem('NYX_NOTES', notesArea.value);
+      document.getElementById('notesSaved').textContent = 'SAVED LOCALLY';
+    }, 500);
+  });
+
+  // ---------- Currency (Frankfurter, no key) ----------
+  async function loadCurrency() {
+    try {
+      const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=NGN,EUR,GBP');
+      const data = await res.json();
+      const ngn = data.rates.NGN;
+      document.getElementById('currencyBody').innerHTML = `
+        <div class="stat-big">₦${ngn.toFixed(0)}</div>
+        <div class="stat-sub">1 USD · ${data.date}</div>
+        <div class="stat-row"><span>EUR</span><b>${data.rates.EUR.toFixed(3)}</b></div>
+        <div class="stat-row"><span>GBP</span><b>${data.rates.GBP.toFixed(3)}</b></div>`;
+      liveData.currency = `1 USD ≈ ₦${ngn.toFixed(0)}`;
+    } catch (e) {
+      document.getElementById('currencyBody').innerHTML = `<div class="error-state">RATES UNAVAILABLE<br><span style="font-size:9px;opacity:0.7;">${(e && e.message) ? e.message : e}</span></div>`;
+    }
+  }
+  loadCurrency();
+
+  // ---------- Battery (Browser Battery API) ----------
+  async function loadBattery() {
+    const el = document.getElementById('batteryBody');
+    if (!navigator.getBattery) {
+      document.getElementById('batteryStatus').innerHTML = '<span class="status-dot off"></span>UNSUPPORTED';
+      el.innerHTML = '<div class="loading">NOT SUPPORTED IN THIS BROWSER</div>';
+      return;
+    }
+    const battery = await navigator.getBattery();
+    function draw() {
+      const pct = Math.round(battery.level * 100);
+      el.innerHTML = `
+        <div class="stat-big">${pct}%</div>
+        <div class="stat-sub">${battery.charging ? 'CHARGING' : 'ON BATTERY'}</div>`;
+      liveData.battery = `${pct}%${battery.charging ? ' (charging)' : ''}`;
+    }
+    draw();
+    battery.addEventListener('levelchange', draw);
+    battery.addEventListener('chargingchange', draw);
+  }
+  loadBattery();
+
+  // ---------- Network (Network Information API) ----------
+  function loadNetwork() {
+    const el = document.getElementById('networkBody');
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    function draw() {
+      const online = navigator.onLine;
+      const type = conn?.effectiveType?.toUpperCase() || '—';
+      const downlink = conn?.downlink ? `${conn.downlink} MBPS` : '—';
+      el.innerHTML = `
+        <div class="stat-row"><span>STATUS</span><b>${online ? 'ONLINE' : 'OFFLINE'}</b></div>
+        <div class="stat-row"><span>TYPE</span><b>${type}</b></div>
+        <div class="stat-row"><span>SPEED (EST.)</span><b>${downlink}</b></div>`;
+      document.getElementById('footNet').textContent = online ? 'ONLINE' : 'OFFLINE';
+    }
+    draw();
+    window.addEventListener('online', draw);
+    window.addEventListener('offline', draw);
+    if (conn) conn.addEventListener('change', draw);
+  }
+  loadNetwork();
+
+  // ---------- Daily coding (WakaTime — needs key) ----------
+  async function loadCoding() {
+    const el = document.getElementById('codingBody');
+    try {
+      const res = await fetch('/api/wakatime');
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        document.getElementById('codingStatus').innerHTML = '<span class="status-dot off"></span>KEY REQUIRED';
+        el.innerHTML = `<div class="config-note">${data.error || 'Add WAKATIME_API_KEY as a Cloudflare Pages secret to enable this.'}</div>`;
+        return;
+      }
+      document.getElementById('codingStatus').innerHTML = '<span class="status-dot"></span>LIVE';
+      el.innerHTML = `
+        <div class="stat-big">${data.data.grand_total.text}</div>
+        <div class="stat-sub">TODAY</div>`;
+    } catch (e) {
+      el.innerHTML = '<div class="error-state">WAKATIME UNAVAILABLE</div>';
+    }
+  }
+  loadCoding();
+
+  // ---------- AI Brief (rule-based, generated locally from collected live data) ----------
+  function generateBrief() {
+    const lines = [];
+    const hour = new Date().getHours();
+    lines.push(`${greetingWord(hour).charAt(0) + greetingWord(hour).slice(1).toLowerCase()}.`);
+    if (liveData.weather) lines.push(`Weather is ${liveData.weather}${liveData.rainChance != null ? `, ${liveData.rainChance}% chance of rain` : ''}.`);
+    if (liveData.aqi) lines.push(`Air quality is ${liveData.aqi}.`);
+    if (liveData.nextEvent) lines.push(`Next on your calendar: ${liveData.nextEvent}.`);
+    else lines.push(`No calendar connected — add a Google Calendar key to see today's events here.`);
+    if (liveData.arsenal) lines.push(`Arsenal: ${liveData.arsenal}.`);
+    if (liveData.github) lines.push(`GitHub: ${liveData.github}.`);
+    if (liveData.currency) lines.push(`${liveData.currency}.`);
+
+    const openFocus = focusData.filter(f => !f.done).length;
+    const openTasks = tasksData.filter(t => !t.done).length;
+
+    let rec = "Take a moment to set today's focus.";
+    if (openFocus > 0) rec = `You have ${openFocus} focus item${openFocus>1?'s':''} left — tackle the top one first.`;
+    else if (openTasks > 0) rec = `Focus list is clear — ${openTasks} task${openTasks>1?'s remain':' remains'} on today's list.`;
+    else rec = "Everything on today's lists is done. Good work.";
+
+    document.getElementById('briefBody').innerHTML = `
+      <div class="brief-line">${lines.join(' ')}</div>
+      <div class="brief-rec">RECOMMENDATION<b>${rec}</b></div>`;
+  }
+  // give the live fetches a moment to populate liveData, then compile
+  setTimeout(generateBrief, 2200);
+
+  // ---------- Command palette ----------
+  const commands = [
+    { label: 'Toggle theme', hint: 'T', action: toggleTheme },
+    { label: 'Refresh weather', hint: 'R', action: initLocation },
+    { label: 'Refresh quote', hint: 'Q', action: loadQuote },
+    { label: 'Focus notes', hint: 'N', action: () => { closePalette(); notesArea.focus(); } },
+    { label: 'Refresh GitHub', hint: 'G', action: loadGithub },
+    { label: 'Regenerate AI brief', hint: 'B', action: generateBrief },
+  ];
+  const overlay = document.getElementById('cmdkOverlay');
+  const cmdkInput = document.getElementById('cmdkInput');
+  const cmdkList = document.getElementById('cmdkList');
+  function renderPalette(filter = '') {
+    const matches = commands.filter(c => c.label.toLowerCase().includes(filter.toLowerCase()));
+    cmdkList.innerHTML = matches.map((c, i) => `<div class="cmdk-item ${i===0?'active':''}" data-idx="${commands.indexOf(c)}"><span>${c.label}</span><span>${c.hint}</span></div>`).join('') || '<div class="cmdk-item">No matches</div>';
+    cmdkList.querySelectorAll('.cmdk-item[data-idx]').forEach(item => {
+      item.addEventListener('click', () => { commands[+item.dataset.idx].action(); closePalette(); });
+    });
+  }
+  function openPalette() { overlay.classList.add('open'); cmdkInput.value=''; renderPalette(); cmdkInput.focus(); }
+  function closePalette() { overlay.classList.remove('open'); }
+  cmdkInput.addEventListener('input', () => renderPalette(cmdkInput.value));
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); overlay.classList.contains('open') ? closePalette() : openPalette(); }
+    if (e.key === 'Escape') closePalette();
+    if (!overlay.classList.contains('open') && document.activeElement !== notesArea) {
+      if (e.key.toLowerCase() === 't') toggleTheme();
+      if (e.key.toLowerCase() === 'r') initLocation();
+      if (e.key.toLowerCase() === '/') { e.preventDefault(); openPalette(); }
+    }
+  });
+</script>
+</body>
+</html>
